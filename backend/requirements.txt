@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+pylint
+flake8

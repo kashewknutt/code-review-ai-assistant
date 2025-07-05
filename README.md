@@ -138,15 +138,15 @@ OPENAI_API_KEY=your_key
 
 #### 🧠 Phase 2: Agent + Static Analyzer
 
-- [ ] Integrate LangChain ReAct-style agent
-- [ ] Create GitHub repo parser (basic AST)
-- [ ] Implement bug-pattern detector (pylint/flake8-based)
-- [ ] Add suggestion engine (text + patch proposal)
-- [ ] Generate patches and diff output using `difflib` or `unidiff`
+- [X] Integrate LangChain ReAct-style agent
+- [X] Create GitHub repo parser (basic AST)
+- [X] Implement bug-pattern detector (pylint/flake8-based)
+- [X] Add suggestion engine (text + patch proposal)
+- [X] Generate patches and diff output using `difflib` or `unidiff`
 
 #### 🤖 Phase 3: PR Bot
 
-- [ ] GitHub API integration (list repos, branches, files)
+- [X] GitHub API integration (list repos, branches, files)
 - [ ] Authenticate and create PRs with suggestions
 - [ ] Add commit message generation
 - [ ] Auto-describe PR based on LLM summary

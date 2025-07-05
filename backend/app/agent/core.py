@@ -9,7 +9,14 @@ import httpx
 import os
 
 # Dummy imports for now — create these modules as stubs
-from app.agent.tools import dummy_tool
+from app.agent.tools import (
+    lint_file,
+    suggest_patch,
+    apply_patch,
+    get_diff,
+    commit_changes,
+    load_and_analyze_repo
+)
 from app.agent.memory import get_memory
 from app.agent.prompts import DEFAULT_AGENT_PREFIX, DEFAULT_AGENT_SUFFIX
 
@@ -50,10 +57,12 @@ class GitHubChatModel(BaseChatModel):
         return "github-chat-model"
 
 
-def get_agent(session_id: str):
+def get_agent(session_id: str, repo_path: str = None):
     llm = GitHubChatModel()
-
-    tools = [dummy_tool]
+    
+    from app.agent.tools import get_tools
+    tools = get_tools(repo_path)
+    
     memory = get_memory(session_id)
 
     agent = initialize_agent(

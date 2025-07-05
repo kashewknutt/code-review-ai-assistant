@@ -2,6 +2,8 @@ fastapi
 uvicorn
 pylint
 flake8
+unidiff
+PyGithub>=1.59
 langchain
 langchain-core
 httpx

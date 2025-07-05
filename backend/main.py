@@ -30,24 +30,19 @@ class RepoQueryRequest(BaseModel):
 
 @app.post("/query-repo")
 def query_repo(request: RepoQueryRequest):
-    if request.github_token:
-        os.environ["GITHUB_API_TOKEN"] = request.github_token
-
     try:
-        # Compose a structured string input for the agent
-        input_string = (
-            f"You are analyzing the following repo:\n{request.repo_url}\n\n"
-            f"Question: {request.query}\n\n"
-            f"Use available tools if needed."
-        )
+        input_string = f"\nQuery: {request.query}\nRepo_URL:{request.repo_url}\n"
 
-        tool_input = f"{request.repo_url}\n{request.query}"
-        result = load_and_analyze_repo(tool_input)
+        # Let the agent handle the rest
+        agent = get_agent(session_id="repo-session", github_token=request.github_token)
+        print(f"Running agent for input: {input_string}")
+        result = agent.invoke({"input": input_string})
 
         return {"response": result}
 
     except Exception as e:
         return {"error": str(e)}
+
 
 
 @app.get("/test-agent")

@@ -7,16 +7,6 @@ from langchain_core.outputs import ChatResult, ChatGeneration
 from pydantic import Field
 import httpx
 import os
-
-# Dummy imports for now — create these modules as stubs
-from app.agent.tools import (
-    lint_file,
-    suggest_patch,
-    apply_patch,
-    get_diff,
-    commit_changes,
-    load_and_analyze_repo
-)
 from app.agent.memory import get_memory
 from app.agent.prompts import DEFAULT_AGENT_PREFIX, DEFAULT_AGENT_SUFFIX
 
@@ -24,6 +14,7 @@ from app.agent.prompts import DEFAULT_AGENT_PREFIX, DEFAULT_AGENT_SUFFIX
 class GitHubChatModel(BaseChatModel):
     temperature: float = Field(default=0.3)
     max_tokens: int = Field(default=256)
+    github_token: str = Field(default=os.environ.get("GITHUB_API_TOKEN", None), exclude=True)
 
     def _convert_message(self, m):
         if isinstance(m, HumanMessage):
@@ -57,11 +48,12 @@ class GitHubChatModel(BaseChatModel):
         return "github-chat-model"
 
 
-def get_agent(session_id: str, repo_path: str = None):
-    llm = GitHubChatModel()
+def get_agent(session_id: str, repo_path: str = None, github_token: str = None) -> BaseChatModel:
+    print("Get agent called with session_id:", session_id)
+    llm = GitHubChatModel(github_token=github_token or os.environ.get("GITHUB_API_TOKEN", None))
     
     from app.agent.tools import get_tools
-    tools = get_tools(repo_path)
+    tools = get_tools(repo_path, github_token=github_token)
     
     memory = get_memory(session_id)
 
@@ -77,4 +69,5 @@ def get_agent(session_id: str, repo_path: str = None):
             "suffix": DEFAULT_AGENT_SUFFIX,
         },
     )
+    print("Agent initialized")
     return agent

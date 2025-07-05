@@ -6,14 +6,20 @@ from app.github.clone import clone_repo_from_url
 from app.github import commit_push
 from pathlib import Path
 from langchain_core.messages import SystemMessage, HumanMessage
-from app.analysis import linter, patcher, suggester
+from app.analysis.linter import run_linter_on_file
+from app.analysis.suggester import generate_patch
+from app.analysis.patcher import apply_patch_to_file, generate_diff
+from app.github.commit_push import commit_and_push
 from app.utils.text_cleaner import clean_truncate
-
+from app.github.commit_push import update_file
 
 @tool
 def lint_file(path: str) -> str:
-    """Run a linter on the given file path and return issues as text."""
-    result = linter.run_linter_on_file(Path(path))
+    """
+    Run a linter on the given file path and return issues as text.
+    Dont try to reiterate if a file is not found. Skip and skip linting. use the load_and_analyze_repo tool instead.
+    """
+    result = run_linter_on_file(Path(path))
     return result
 
 @tool
@@ -24,7 +30,7 @@ def suggest_patch(input: str) -> str:
     """
     try:
         path, issues = input.strip().split("\n", 1)
-        return suggester.generate_patch(path, issues)
+        return generate_patch(path, issues)
     except Exception as e:
         return f"Failed to parse input: {e}"
 
@@ -32,18 +38,22 @@ def suggest_patch(input: str) -> str:
 def apply_patch(input: str) -> str:
     """
     Given input as "<file_path>\n<patch_text>", applies patch to that file.
+    Use this when everything is sure the file exists and is correct.
     """
     try:
         path, patch_text = input.strip().split("\n", 1)
-        return patcher.apply_patch_to_file(path, patch_text)
+        return apply_patch_to_file(path, patch_text)
     except Exception as e:
         return f"Failed to apply patch: {e}"
 
 
 @tool
 def get_diff(path: str) -> str:
-    """Show diff of the current file with its last committed version."""
-    return patcher.generate_diff(path)
+    """
+    Show diff of the current file with its last committed version.
+    This will return the unified diff format.
+    """
+    return generate_diff(path)
 
 @tool
 def commit_changes(input: str) -> str:
@@ -53,14 +63,55 @@ def commit_changes(input: str) -> str:
     """
     try:
         repo_path, commit_message = input.strip().split("\n", 1)
-        return commit_push.commit_and_push(repo_path, commit_message)
+        return commit_and_push(repo_path, commit_message)
     except Exception as e:
         return f"Failed to parse input: {e}"
+    
+@tool
+def github_direct_update(input: str) -> str:
+    """
+    Directly update a file in a GitHub repo using GitHub token.
+    You'll get information about this from other tools.
+    Input format (newline-separated): 
+    "<owner>/<repo>\n<file_path>\n<new_content>\n<commit_message>\n[branch]"
+    """
+    try:
+
+        parts = input.strip().split("\n")
+        if len(parts) < 4:
+            return "Invalid input. Format: '<owner>/<repo>\\n<file_path>\\n<new_content>\\n<commit_message>\\n[branch]'"
+
+        repo_full, file_path, new_content, commit_message = parts[:4]
+        branch = parts[4] if len(parts) >= 5 else "main"
+
+        repo_owner, repo_name = repo_full.strip().split("/", 1)
+
+        from os import getenv
+        token = getenv("GITHUB_API_TOKEN")
+        if not token:
+            return "GitHub token not provided."
+
+        response = update_file(
+            repo_owner=repo_owner,
+            repo_name=repo_name,
+            file_path=file_path,
+            new_content=new_content,
+            commit_message=commit_message,
+            branch=branch,
+            github_token=token
+        )
+
+        return f"File updated: {response.get('commit', {}).get('html_url', 'No URL returned')}"
+
+    except Exception as e:
+        return f"Failed to update file: {e}"
+
 
 @tool
 def load_and_analyze_repo(input: str) -> str:
     """
     Clone a GitHub repo and answer a question about it.
+    This tool will try to find useful files in the repo and summarize them.
     Input format: "<repo_url>\n<question>"
     """
     import os
@@ -200,7 +251,8 @@ Based on this, answer the following question in clear, natural English:
         return f"Failed to analyze repo: {e}"
 
 
-def get_tools(repo_path=None):
+def get_tools(repo_path=None, github_token=None):
+    print("get_tools called with repo_path:", repo_path)
     base_tools = [
         lint_file,
         suggest_patch,
@@ -210,21 +262,31 @@ def get_tools(repo_path=None):
         load_and_analyze_repo
     ]
 
+    if github_token:
+        base_tools.append(github_direct_update)
+
     if not repo_path:
+        print("No repo_path provided, returning base tools only.")
         return base_tools
 
     from app.github.parser import walk_python_files
 
     @tool
     def list_repo_files(input: str) -> str:
-        """List all Python files in the current cloned repo. Input is ignored."""
+        """
+        List all Python files in the current cloned repo. Input is ignored.
+        Use this when the file you are trying to access is not found.
+        """
         print("Input to list_repo_files", input)
         files = walk_python_files(repo_path)
         return "\n".join(f["path"] for f in files if f.get("error") is None)
 
     @tool
     def read_file_content(path: str) -> str:
-        """Read contents of a file at the given path within the repo."""
+        """
+        Read contents of a file at the given path within the repo.
+        Use this when you have confirmed the file exists.
+        """
         try:
             full_path = Path(path)
             if not full_path.is_absolute():
@@ -232,5 +294,5 @@ def get_tools(repo_path=None):
             return full_path.read_text(encoding="utf-8", errors="ignore")[:4000]  # limit to 4K
         except Exception as e:
             return f"Error reading file: {e}"
-
+    print("Adding tools for repo path:", repo_path)  
     return base_tools + [list_repo_files, read_file_content]

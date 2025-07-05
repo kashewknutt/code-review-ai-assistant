@@ -133,8 +133,8 @@ OPENAI_API_KEY=your_key
 - [X] Create GitHub repo with MIT license
 - [X] Initialize lightweight Python + TypeScript monorepo structure
 - [X] Setup FastAPI with minimal routes and static analysis shell
-- [ ] Integrate GitHub OAuth or token config
-- [ ] Choose and wire up LangChain or LangGraph (agent control logic)
+- [X] Integrate GitHub OAuth or token config
+- [X] Choose and wire up LangChain or LangGraph (agent control logic)
 
 #### 🧠 Phase 2: Agent + Static Analyzer
 

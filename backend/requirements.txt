@@ -2,3 +2,7 @@ fastapi
 uvicorn
 pylint
 flake8
+langchain
+langchain-core
+httpx
+python-dotenv

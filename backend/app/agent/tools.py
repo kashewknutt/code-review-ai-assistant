@@ -118,12 +118,17 @@ def load_and_analyze_repo(input: str) -> str:
     print("Received input:", input)
 
     try:
-        # Split input into repo_url and question
-        parts = input.strip().split("\n", 1)
-        if len(parts) < 2:
-            return "Invalid input format. Expected '<repo_url>\\n<question>'"
-        
-        repo_url, question = parts
+        if "\nRepo_URL:" in input:
+            # Extract repo_url and question from the formatted input
+            parts = input.split("\nRepo_URL:")
+            question = parts[0].replace("Query: ", "").strip()
+            repo_url = parts[1].strip()
+        else:
+            # Fallback to original parsing
+            parts = input.strip().split("\n", 1)
+            if len(parts) < 2:
+                return "Invalid input format. Expected '<repo_url>\\n<question>'"
+            repo_url, question = parts
         print("Repo URL:", repo_url)
         print("Question:", question)
 

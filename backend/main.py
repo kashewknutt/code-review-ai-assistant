@@ -31,7 +31,7 @@ class RepoQueryRequest(BaseModel):
 @app.post("/query-repo")
 def query_repo(request: RepoQueryRequest):
     try:
-        input_string = f"\nQuery: {request.query}\nRepo_URL:{request.repo_url}\n"
+        input_string = f"Query: {request.query}\nRepo_URL:{request.repo_url}"
 
         # Let the agent handle the rest
         agent = get_agent(session_id="repo-session", github_token=request.github_token)
